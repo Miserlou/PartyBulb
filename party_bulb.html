@@ -89,6 +89,8 @@
   </style>
 
           <script>
+
+          var hugh = new window.Hue();
           var hue = 0;
           var sat = 100;
           var value = 100;
@@ -110,7 +112,8 @@
 
           function updateColor(){
             $('body').css({'background-color': tinycolor("hsv " + hue + ", " + sat + ", " + value).toRgbString()});
-            hue.color(tinycolor("hsv " + hue + ", " + sat + ", " + value).toHexString());;
+            console.log(tinycolor("hsv " + hue + ", " + sat + ", " + value).toHexString().replace('#', ''));
+            hugh.color(tinycolor("hsv " + hue + ", " + sat + ", " + value).toHexString().replace('#', ''));
           }
           updateColor();
           </script>
@@ -130,7 +133,6 @@
             var logPitch = function(){
 
                 var noteName = tuner.noteName;
-                console.log(noteName);
 
                 if(noteName != undefined){
                   var octave = noteName.slice(-1);

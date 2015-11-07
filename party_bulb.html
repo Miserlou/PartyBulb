@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Harmony</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+
+    <!-- Custom styles for this template -->
+    <link href="sticky-footer.css" rel="stylesheet">
+
+    <script src="http://p5js.org/js/p5.min.js"></script>
+    <script src="http://p5js.org/js/p5.dom.js"></script>
+    <script src="http://p5js.org/js/p5.sound.js"></script>
+    <script src="http://p5js.org/js/render.js"></script>
+    <script src="/wad.min.js"></script>
+    <script src="/tinycolor-min.js"></script>
+    <script src="/hue.js"></script>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+  </head>
+
+  <body id="body">
+
+    <center>
+      <span id="key">A0</span></p>
+    </center>
+
+  </body>
+
+  <style>
+  /* Sticky footer styles
+  -------------------------------------------------- */
+  html {
+    position: relative;
+    min-height: 100%;
+  }
+  body {
+    /* Margin bottom by footer height */
+    margin-bottom: 60px;
+    background-color: black;
+  }
+
+  #key{
+    color: white;
+    font-size: 400px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  .footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    /* Set the fixed height of the footer here */
+    height: 60px;
+    background-color: #f5f5f5;
+  }
+
+
+  /* Custom page CSS
+  -------------------------------------------------- */
+  /* Not required for template or sticky footer method. */
+
+  .container {
+    width: auto;
+    max-width: 680px;
+    padding: 0 15px;
+  }
+  .container .text-muted {
+    margin: 20px 0;
+  }
+  </style>
+
+          <script>
+          var hue = 0;
+          var sat = 100;
+          var value = 100;
+
+          var colorMap = {
+            'A': '0',
+            'A#': '20',
+            'B': '40',
+            'C': '60',
+            'C#': '80',
+            'D': '100',
+            'D#': '120',
+            'E': '140',
+            'F': '160',
+            'F#': '180',
+            'G': '200',
+            'G#': '220',
+          }
+
+          function updateColor(){
+            $('body').css({'background-color': tinycolor("hsv " + hue + ", " + sat + ", " + value).toRgbString()});
+            hue.color(tinycolor("hsv " + hue + ", " + sat + ", " + value).toHexString());;
+          }
+          updateColor();
+          </script>
+
+          <script>
+
+          var voice = new Wad({source : 'mic'}); // At this point, your browser will ask for permission to access your microphone.
+          var tuner = new Wad.Poly();
+          tuner.add(voice);
+
+          setTimeout(function() { 
+
+            voice.play({volume: 1 }); // You must give your browser permission to access your microphone before calling play().
+
+            tuner.updatePitch() // The tuner is now calculating the pitch and note name of its input 60 times per second. These values are stored in tuner.pitch and tuner.noteName.
+
+            var logPitch = function(){
+
+                var noteName = tuner.noteName;
+                console.log(noteName);
+
+                if(noteName != undefined){
+                  var octave = noteName.slice(-1);
+                  if(parseInt(octave) < 6){
+                    if (tuner.noteName.length == 2){
+                      hue = colorMap[tuner.noteName.slice(0,1)];
+                    } else {
+                      hue = colorMap[tuner.noteName.slice(0,2)];
+                    }
+
+                    $('#key').text(noteName);
+                  }
+                }
+
+                requestAnimationFrame(logPitch)
+            };
+            logPitch();
+          }, 1000);
+
+        </script>
+
+        <script>
+
+        function createAudioMeter(audioContext,clipLevel,averaging,clipLag) {
+          var processor = audioContext.createScriptProcessor(512);
+          processor.onaudioprocess = volumeAudioProcess;
+          processor.clipping = false;
+          processor.lastClip = 0;
+          processor.volume = 0;
+          processor.clipLevel = clipLevel || 0.98;
+          processor.averaging = averaging || 0.95;
+          processor.clipLag = clipLag || 750;
+
+          // this will have no effect, since we don't copy the input to the output,
+          // but works around a current Chrome bug.
+          processor.connect(audioContext.destination);
+
+          processor.checkClipping =
+            function(){
+              if (!this.clipping)
+                return false;
+              if ((this.lastClip + this.clipLag) < window.performance.now())
+                this.clipping = false;
+              return this.clipping;
+            };
+
+          processor.shutdown =
+            function(){
+              this.disconnect();
+              this.onaudioprocess = null;
+            };
+
+          return processor;
+        }
+
+        function volumeAudioProcess( event ) {
+          var buf = event.inputBuffer.getChannelData(0);
+            var bufLength = buf.length;
+          var sum = 0;
+            var x;
+
+          // Do a root-mean-square on the samples: sum up the squares...
+            for (var i=0; i<bufLength; i++) {
+              x = buf[i];
+              if (Math.abs(x)>=this.clipLevel) {
+                this.clipping = true;
+                this.lastClip = window.performance.now();
+              }
+              sum += x * x;
+            }
+
+            // ... then take the square root of the sum.
+            var rms =  Math.sqrt(sum / bufLength);
+
+            // Now smooth this out with the averaging factor applied
+            // to the previous sample - take the max here because we
+            // want "fast attack, slow release."
+            this.volume = Math.max(rms, this.volume*this.averaging);
+        }
+
+        var audioContext = null;
+        var meter = null;
+        var canvasContext = null;
+        var WIDTH=500;
+        var HEIGHT=50;
+        var rafID = null;
+
+        window.onload = function() {
+
+            // grab our canvas
+          // canvasContext = document.getElementById( "meter" ).getContext("2d");
+          
+            // monkeypatch Web Audio
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+          
+            // grab an audio context
+            audioContext = new AudioContext();
+
+            // Attempt to get audio input
+            try {
+                // monkeypatch getUserMedia
+                navigator.getUserMedia = 
+                  navigator.getUserMedia ||
+                  navigator.webkitGetUserMedia ||
+                  navigator.mozGetUserMedia;
+
+                // ask for an audio input
+                navigator.getUserMedia(
+                {
+                    "audio": {
+                        "mandatory": {
+                            "googEchoCancellation": "false",
+                            "googAutoGainControl": "false",
+                            "googNoiseSuppression": "false",
+                            "googHighpassFilter": "false"
+                        },
+                        "optional": []
+                    },
+                }, gotStream, didntGetStream);
+            } catch (e) {
+                alert('getUserMedia threw exception :' + e);
+            }
+
+        }
+
+
+        function didntGetStream() {
+            alert('Stream generation failed.');
+        }
+
+        var mediaStreamSource = null;
+
+        function gotStream(stream) {
+            // Create an AudioNode from the stream.
+            mediaStreamSource = audioContext.createMediaStreamSource(stream);
+
+            // Create a new volume meter and connect it.
+            meter = createAudioMeter(audioContext);
+            mediaStreamSource.connect(meter);
+
+            // kick off the visual updating
+            drawLoop();
+        }
+
+        function drawLoop( time ) {
+            // clear the background
+            // canvasContext.clearRect(0,0,WIDTH,HEIGHT);
+
+            // // check if we're currently clipping
+            // if (meter.checkClipping())
+            //     canvasContext.fillStyle = "red";
+            // else
+            //     canvasContext.fillStyle = "green";
+
+            // draw a bar based on the current volume
+            // canvasContext.fillRect(0, 0, meter.volume*WIDTH*1.4, HEIGHT);
+
+            value = meter.volume;
+            updateColor();
+
+            // set up the next visual callback
+            rafID = window.requestAnimationFrame( drawLoop );
+        }
+
+        </script>
+
+  </body>
+</html>
